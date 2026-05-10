@@ -1,7 +1,8 @@
 import { db, persist } from "../../store/db.js";
 import type { Reminder } from "../../store/types.js";
 import { formatInTz, nowIso, parseWhen, shortId } from "../../util/time.js";
-import { getOrCreateGroup } from "./settings.js";
+import { getUserTimezone } from "./users.js";
+import { log } from "../../util/log.js";
 
 export type SetReminderResult =
   | { ok: true; reminder: Reminder; humanWhen: string }
@@ -14,8 +15,9 @@ export async function setReminder(
   message: string,
 ): Promise<SetReminderResult> {
   if (!message?.trim()) return { ok: false, message: "Reminder needs a message." };
-  const g = await getOrCreateGroup(groupJid);
-  const fireAtIso = parseWhen(when, g.timezone);
+  const userTz = await getUserTimezone(userJid, groupJid);
+  const fireAtIso = parseWhen(when, userTz);
+  log.info({ userJid, when, userTz, fireAtIso, message }, "reminder.parse");
   if (!fireAtIso) return { ok: false, message: `Couldn't understand the time "${when}". Try "in 30m", "tomorrow 9am", or "2026-05-09 14:00".` };
   if (new Date(fireAtIso).getTime() <= Date.now()) {
     return { ok: false, message: "That time is in the past." };
@@ -35,7 +37,7 @@ export async function setReminder(
   d.data.reminders.push(r);
   await persist();
 
-  return { ok: true, reminder: r, humanWhen: formatInTz(fireAtIso, g.timezone) + " " + g.timezone };
+  return { ok: true, reminder: r, humanWhen: formatInTz(fireAtIso, userTz) + " " + userTz };
 }
 
 export async function listReminders(groupJid: string): Promise<Reminder[]> {
@@ -73,7 +75,12 @@ export async function markFired(id: string): Promise<void> {
 export async function formatRemindersList(groupJid: string): Promise<string> {
   const list = await listReminders(groupJid);
   if (!list.length) return "No pending reminders.";
-  const g = await getOrCreateGroup(groupJid);
-  const lines = list.map((r) => `• \`${r.id}\` — ${formatInTz(r.fireAt, g.timezone)} ${g.timezone} — ${r.message}`);
+  // Each reminder is rendered in the original setter's timezone.
+  const lines = await Promise.all(
+    list.map(async (r) => {
+      const tz = await getUserTimezone(r.userJid, r.groupJid);
+      return `• \`${r.id}\` — ${formatInTz(r.fireAt, tz)} ${tz} — ${r.message}`;
+    }),
+  );
   return ["*Pending reminders*", ...lines].join("\n");
 }

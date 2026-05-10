@@ -3,6 +3,7 @@ import { log } from "../util/log.js";
 import { runDigest } from "../agent/tools/digest.js";
 import { sendText } from "../whatsapp/send.js";
 import { getGroup, listGroups } from "../agent/tools/settings.js";
+import { isGroupAllowed } from "../whatsapp/allowlist.js";
 
 /** jid -> array of scheduled tasks (one per digest time) */
 const jobs = new Map<string, ScheduledTask[]>();
@@ -39,6 +40,10 @@ async function fireDigest(jid: string): Promise<void> {
 
 export async function rescheduleGroup(jid: string): Promise<void> {
   clearJobsFor(jid);
+  if (!(await isGroupAllowed(jid))) {
+    log.info({ jid }, "cron.skip_not_allowlisted");
+    return;
+  }
   const g = await getGroup(jid);
   if (!g) return;
 

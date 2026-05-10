@@ -21,6 +21,7 @@ import {
 import { formatHistory } from "../agent/tools/history.js";
 import { rescheduleGroup } from "../scheduler/cron.js";
 import { runAgent } from "../agent/agent.js";
+import { setUserTimezone, getUserTimezone } from "../agent/tools/users.js";
 
 export type CmdCtx = { groupJid: string; userJid: string };
 
@@ -52,9 +53,19 @@ export async function runCommand(text: string, ctx: CmdCtx): Promise<string> {
       return formatHistory(ctx.groupJid, 5);
 
     case "set-timezone":
-    case "settimezone": {
+    case "settimezone":
+    case "tz":
+    case "my-timezone": {
       const tz = cmd.args[0];
-      if (!tz) return "Usage: /set-timezone <IANA>  (e.g. Asia/Kolkata)";
+      if (!tz) return "Usage: /set-timezone <IANA>  (e.g. Asia/Kolkata) — sets *your* timezone for reminders & clock.";
+      const r = await setUserTimezone(ctx.userJid, tz);
+      return r.message;
+    }
+
+    case "digest-timezone":
+    case "digesttimezone": {
+      const tz = cmd.args[0];
+      if (!tz) return "Usage: /digest-timezone <IANA>  — sets the timezone the *daily digest* schedule runs in (group-wide).";
       const r = await setTimezone(ctx.groupJid, tz);
       if (r.ok) await rescheduleGroup(ctx.groupJid);
       return r.message;
@@ -121,7 +132,8 @@ export async function runCommand(text: string, ctx: CmdCtx): Promise<string> {
 
     case "settings": {
       const g = await getOrCreateGroup(ctx.groupJid);
-      return formatSettings(g);
+      const userTz = await getUserTimezone(ctx.userJid, ctx.groupJid);
+      return formatSettings(g) + `\n• Your timezone: ${userTz}`;
     }
 
     case "ask": {

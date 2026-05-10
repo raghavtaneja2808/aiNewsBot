@@ -1,4 +1,4 @@
-import { chat } from "../groqClient.js";
+import { chat } from "../llmClient.js";
 import { scrapePage } from "./scrapePage.js";
 
 const ARTICLE_SYS = `You are a precise news summarizer for a WhatsApp tech audience.

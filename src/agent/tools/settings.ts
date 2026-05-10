@@ -95,7 +95,7 @@ export async function listTopics(jid: string): Promise<string> {
 export function formatSettings(g: GroupConfig): string {
   return [
     "*Group settings*",
-    `• Timezone: ${g.timezone}`,
+    `• Digest timezone: ${g.timezone}`,
     `• Digest times: ${g.digestTimes.join(", ")}`,
     `• Status: ${g.paused ? "paused ⏸️" : "active ▶️"}`,
     `• Topics: ${g.topics.length ? g.topics.join(", ") : "(generic AI news)"}`,

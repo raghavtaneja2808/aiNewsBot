@@ -20,6 +20,7 @@
     "chrono-node": "^2.7.7",
     "dotenv": "^16.4.7",
     "jsdom": "^25.0.1",
+    "link-preview-js": "^3.2.0",
     "lowdb": "^7.0.1",
     "node-cron": "^3.0.3",
     "openai": "^4.77.0",
